@@ -1,9 +1,3 @@
-# __________________________________/
-# __Author:_________Vit_Prochazka___/
-# __Created:________16.07.2019______/
-# __Version:________1.0_____________/
-# __________________________________/
-
 # imports
 import bpy
 from bpy.props import (
@@ -200,6 +194,12 @@ class Make_WCone(bpy.types.Operator):
         default = False
     )
 
+    smoothed: BoolProperty(
+        name = "Smooth",
+        description = "Set smooth shading",
+        default = True
+    )
+
     def execute(self, context):
 
         mesh = bpy.data.meshes.new("wCone")
@@ -218,12 +218,27 @@ class Make_WCone(bpy.types.Operator):
 
         mesh.from_pydata(*update_WCone(wD))
         mesh.update()
-        
-        object_utils.object_data_add(context, mesh, operator=None)
+        # Add the mesh as an object into the scene
+        obj = object_utils.object_data_add(context, mesh, operator=None)
 
+        # Apply smooth shading
         bpy.ops.object.shade_smooth()
-        context.object.data.use_auto_smooth = True
-        context.object.data.auto_smooth_angle = 1.0
+
+        # Check Blender version and apply smoothing
+        if bpy.app.version >= (4, 2, 0):
+            # For Blender 4.1 and newer
+            if self.smoothed:
+                bpy.ops.object.shade_auto_smooth(angle=0.872665)  # 设置角度限制
+        elif bpy.app.version >= (4, 1, 0) and bpy.app.version < (4, 2, 0):
+            # For Blender 4.1
+            if self.smoothed:                
+                bpy.ops.object.modifier_add_node_group(asset_library_type='ESSENTIALS', asset_library_identifier="", relative_asset_identifier="geometry_nodes\\smooth_by_angle.blend\\NodeTree\\Smooth by Angle")
+        else:
+            # For Blender 4.0 and older
+            if self.smoothed:
+                obj.data.use_auto_smooth = True
+                obj.data.auto_smooth_angle = 0.872665  # 设置角度限制
+
         return {'FINISHED'}
 
 # create UI panel

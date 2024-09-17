@@ -1,9 +1,3 @@
-# __________________________________/
-# __Author:_________Vit_Prochazka___/
-# __Created:________16.07.2019______/
-# __Version:________1.0_____________/
-# __________________________________/
-
 # imports
 import bpy
 from bpy.props import (
@@ -53,7 +47,7 @@ def geoGen_WCapsule (
     verts.append(Vector((0, 0, 0)))
     verts.append(Vector((0, 0, height)))
 
-    # Create bootom cap segmentation loops
+    # Create bottom cap segmentation loops
     if seg_caps > 1:
         angleStep = PI / (2 * seg_caps)
         for i in range(1, seg_caps):
@@ -86,10 +80,10 @@ def geoGen_WCapsule (
                 loops.append(loop)
 
     # Create top corner circle
-        newVerts, loop = circ_V(radius, seg_perimeter, len(verts))
-        move_V(newVerts, Vector((0, 0, height - radius)))
-        verts.extend(newVerts)
-        loops.append(loop)
+    newVerts, loop = circ_V(radius, seg_perimeter, len(verts))
+    move_V(newVerts, Vector((0, 0, height - radius)))
+    verts.extend(newVerts)
+    loops.append(loop)
 
     # Create top cap segmentation loops
     if seg_caps > 1:
@@ -221,11 +215,31 @@ class Make_WCapsule(bpy.types.Operator):
         wD.cent = self.centered
         wD.smo = self.smoothed
         wD.wType = 'WCAPSULE'
+        
 
+        # Apply smooth shading
         bpy.ops.object.shade_smooth()
-        context.object.data.use_auto_smooth = True
-        context.object.data.auto_smooth_angle = 1.0
+
+        # Check Blender version and apply smoothing
+        if bpy.app.version >= (4, 2, 0):
+            # For Blender 4.1 and newer
+            if self.smoothed:
+                bpy.ops.object.shade_auto_smooth(angle=0.872665)  # 设置角度限制
+        elif bpy.app.version >= (4, 1, 0) and bpy.app.version < (4, 2, 0):
+            # For Blender 4.1
+            if self.smoothed:                
+                bpy.ops.object.modifier_add_node_group(asset_library_type='ESSENTIALS', asset_library_identifier="", relative_asset_identifier="geometry_nodes\\smooth_by_angle.blend\\NodeTree\\Smooth by Angle")
+
+
+        else:
+            # For Blender 4.0 and older
+            if self.smoothed:
+                context.object.data.use_auto_smooth = True
+                context.object.data.auto_smooth_angle = 0.872665  # 设置角度限制
+
         return {'FINISHED'}
+
+
 
 # create UI panel
 def draw_WCapsule_panel(self, context):

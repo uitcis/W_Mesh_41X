@@ -1,9 +1,3 @@
-# __________________________________/
-# __Author:_________Vit_Prochazka___/
-# __Created:________16.07.2019______/
-# __Version:________1.0_____________/
-# __________________________________/
-
 # imports
 import bpy
 from bpy.props import (
@@ -31,7 +25,8 @@ def geoGen_WRing (
     seg_perimeter,
     seg_radius,
     sector_from,
-    sector_to):
+    sector_to,
+    smoothed):
     
     # Prepare empty lists
     verts = []
@@ -40,12 +35,13 @@ def geoGen_WRing (
 
     loops = []
 
-    # make sure of what is bigger
+    # Ensure outer radius is greater than or equal to inner radius
     if radius_out < radius_in:
-        radius_in, radius_out = radius_out, radius_in
+        radius_out, radius_in = radius_in, radius_out
 
+    # Ensure sector_from is less than or equal to sector_to
     if sector_from > sector_to:
-        sector_to, sector_from = sector_from, sector_to
+        sector_from, sector_to = sector_to, sector_from
 
     if (radius_out - radius_in) < 0.0001:
         use_inner = False
@@ -76,11 +72,11 @@ def geoGen_WRing (
                     radius_out - (r * stepRadius), 0.0, 0.0)))
             loops.append(loop)
 
-        # fill the loops
+        # Fill the loops
         for i in range(len(loops) - 1):
             faces.extend(bridgeLoops(loops[i], loops[i + 1], closed))
 
-        # one point in the middle
+        # One point in the middle
         if loop_number == seg_radius:
             verts.append(Vector((0.0, 0.0, 0.0)))
             for s in range(seg_number - 1):
@@ -108,7 +104,8 @@ def update_WRing (wData):
         seg_perimeter = wData.seg_1,
         seg_radius = wData.seg_2,
         sector_from = wData.sec_f,
-        sector_to = wData.sec_t
+        sector_to = wData.sec_t,
+        smoothed = wData.smo
     )
 
 # add object W_Plane
@@ -130,7 +127,7 @@ class Make_WRing(bpy.types.Operator):
 
     use_inner: BoolProperty(
         name="Use inner",
-        description="use inner radius",
+        description="Use inner radius",
         default=True
     )
 
@@ -151,7 +148,7 @@ class Make_WRing(bpy.types.Operator):
         min=3,
         soft_min=3,
         step=1
-        )
+    )
 
     seg_radius: IntProperty(
         name="Radius",
@@ -160,32 +157,36 @@ class Make_WRing(bpy.types.Operator):
         min=1,
         soft_min=1,
         step=1
-        )
+    )
 
     sector_from: FloatProperty(
         name="From",
-        description="Setor from",
+        description="Sector from",
         default=0.0,
         min=0.0,
         soft_min=0.0,
-        max = 2 * pi,
-        soft_max = 2 * pi,
+        max=2 * pi,
+        soft_max=2 * pi,
         step=10,
         unit='ROTATION'
     )
 
     sector_to: FloatProperty(
-        name="From",
-        description="Setor from",
+        name="To",
+        description="Sector to",
         default=2 * pi,
         min=0.0,
         soft_min=0.0,
-        max = 2 * pi,
-        soft_max = 2 * pi,
+        max=2 * pi,
+        soft_max=2 * pi,
         step=10,
         unit='ROTATION'
     )
-
+    smoothed: BoolProperty(
+        name = "Smooth",
+        description = "Set smooth shading",
+        default = True
+    )
     def execute(self, context):
 
         mesh = bpy.data.meshes.new("wRing")
@@ -198,16 +199,32 @@ class Make_WRing(bpy.types.Operator):
         wD.seg_2 = self.seg_radius
         wD.sec_f = self.sector_from
         wD.sec_t = self.sector_to
+        wD.smo = self.smoothed
         wD.wType = 'WRING'
-
-
+        # Generate vertices, edges, and faces
         mesh.from_pydata(*update_WRing(wD))
         mesh.update()
-        
-        object_utils.object_data_add(context, mesh, operator=None)
+        # Add the mesh as an object into the scene
+        obj = object_utils.object_data_add(context, mesh, operator=None)
 
+        # Apply smooth shading
         bpy.ops.object.shade_smooth()
-        context.object.data.use_auto_smooth = True
+
+        # Check Blender version and apply smoothing
+        if bpy.app.version >= (4, 2, 0):
+            # For Blender 4.1 and newer
+            if self.smoothed:
+                bpy.ops.object.shade_auto_smooth(angle=0.872665)  # 设置角度限制
+        elif bpy.app.version >= (4, 1, 0) and bpy.app.version < (4, 2, 0):
+            # For Blender 4.1
+            if self.smoothed:                
+                bpy.ops.object.modifier_add_node_group(asset_library_type='ESSENTIALS', asset_library_identifier="", relative_asset_identifier="geometry_nodes\\smooth_by_angle.blend\\NodeTree\\Smooth by Angle")
+        else:
+            # For Blender 4.0 and older
+            if self.smoothed:
+                obj.data.use_auto_smooth = True
+                obj.data.auto_smooth_angle = 0.872665  # 设置角度限制
+
         return {'FINISHED'}
 
 # create UI panel
@@ -219,19 +236,20 @@ def draw_WRing_panel(self, context):
     lay_out.label(text="Type: wRing", icon='MESH_CIRCLE')
 
     col = lay_out.column(align=True)
-    col.prop(WData, "rad_1", text="Radius Main")
+    col.prop(WData, "rad_1", text="Radius Outer")
     col.prop(WData, "rad_2", text="Inner")
 
     col = lay_out.column(align=True)
-    col.prop(WData, "sec_f", text="Section From")
+    col.prop(WData, "sec_f", text="Sector From")
     col.prop(WData, "sec_t", text="To")
     
     col = lay_out.column(align=True)
-    col.prop(WData, "seg_1", text="Segmentation Main")
-    col.prop(WData, "seg_2", text="Cap")
+    col.prop(WData, "seg_1", text="Segmentation Perimeter")
+    col.prop(WData, "seg_2", text="Radius")
 
-    lay_out.prop(WData, "inn", text="Use inner radius")
+    lay_out.prop(WData, "inn", text="Use Inner Radius")
     lay_out.prop(WData, "anim", text="Animated")
+    lay_out.prop(WData, "smo", text="Smooth Shading")
 
 
 # register

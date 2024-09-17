@@ -1,15 +1,15 @@
 # __________________________________/
 # __Author:_________Vit_Prochazka___/
-# __Created:________17.07.2019______/
-# __Version:________1.0_____________/
+# __Created:________17.07.2019______/fix 2024-9-16
+# __Version:________2.0_____________/
 # __________________________________/
 
 bl_info = {
-        "name": "W_Mesh_28x",
+        "name": "W_Mesh",
         "category": "Object",
-        "author": "Vit Prochazka",
-        "version": (1, 0),
-        "blender": (2, 80, 0),
+        "author": "Vit Prochazka/uitcis fix 4.1",
+        "version": (2, 0),
+        "blender": (4, 1, 0),
         "description": "Modify primitives after creation.",
         "warning": "Unexpected bugs can be expected!"
         }

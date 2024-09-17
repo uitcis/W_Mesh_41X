@@ -142,7 +142,7 @@ class Make_WSphere(bpy.types.Operator):
 
     segments: IntProperty(
         name="Segments",
-        description="Segments on diametr",
+        description="Segments on diameter",
         default=24,
         min=3,
         soft_min=3,
@@ -179,15 +179,15 @@ class Make_WSphere(bpy.types.Operator):
     ]
 
     base: EnumProperty(
-        items = Topos,
-        name = "Topology",
-        description = "Type of sphere topology",
-        default = 'CUBE'
+        items=Topos,
+        name="Topology",
+        description="Type of sphere topology",
+        default='CUBE'
     )
 
     smoothed: BoolProperty(
         name="Smooth",
-        description="Smooth shading",
+        description="Apply automatic smoothing",
         default=True
     )
 
@@ -211,15 +211,30 @@ class Make_WSphere(bpy.types.Operator):
         wD.smo = self.smoothed
         wD.wType = 'WSPHERE'
 
-
+        # Generate vertices, edges, and faces
         mesh.from_pydata(*update_WSphere(wD))
         mesh.update()
-        
-        object_utils.object_data_add(context, mesh, operator=None)
+        # Add the mesh as an object into the scene
+        obj = object_utils.object_data_add(context, mesh, operator=None)
 
+        # Apply smooth shading
         bpy.ops.object.shade_smooth()
-        context.object.data.use_auto_smooth = True
-        context.object.data.auto_smooth_angle = 1.0
+
+        # Check Blender version and apply smoothing
+        if bpy.app.version >= (4, 2, 0):
+            # For Blender 4.1 and newer
+            if self.smoothed:
+                bpy.ops.object.shade_auto_smooth(angle=0.872665)  # 设置角度限制
+        elif bpy.app.version >= (4, 1, 0) and bpy.app.version < (4, 2, 0):
+            # For Blender 4.1
+            if self.smoothed:                
+                bpy.ops.object.modifier_add_node_group(asset_library_type='ESSENTIALS', asset_library_identifier="", relative_asset_identifier="geometry_nodes\\smooth_by_angle.blend\\NodeTree\\Smooth by Angle")
+        else:
+            # For Blender 4.0 and older
+            if self.smoothed:
+                obj.data.use_auto_smooth = True
+                obj.data.auto_smooth_angle = 0.872665  # 设置角度限制
+
         return {'FINISHED'}
 
 # create UI panel
@@ -242,14 +257,13 @@ def draw_WSphere_panel(self, context):
         lay_out.prop(WData, "seg_3", text="Divisions")
         lay_out.prop(WData, "inn", text="Triangulate")
     
-
     lay_out.prop(WData, "smo", text="Smooth Shading")
     lay_out.prop(WData, "anim", text="Animated")
-
 
 # register
 def reg_wSphere():
     bpy.utils.register_class(Make_WSphere)
+
 # unregister
 def unreg_wSphere():
     bpy.utils.unregister_class(Make_WSphere)
