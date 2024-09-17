@@ -243,7 +243,7 @@ class wData(bpy.types.PropertyGroup):
     )
 
 
-
+#add menu
 class WAddMenu(bpy.types.Menu):
     bl_label = "wPrimitives"
     bl_idname = "OBJECT_MT_W_Primitives_menu"
@@ -262,8 +262,9 @@ class WAddMenu(bpy.types.Menu):
 
 def draw_addMenu(self, context):
     lay_out = self.layout
-    lay_out.menu(WAddMenu.bl_idname)
-
+    lay_out.menu(WAddMenu.bl_idname, icon='OPTIONS')
+    lay_out.separator()  # 添加分割线，使菜单更清晰
+     
 class ConvertWMesh(bpy.types.Operator):
     """Convert WMesh to mesh"""
     bl_idname = "mesh.convert_w_mesh"
@@ -379,7 +380,7 @@ def unregister():
     bpy.utils.unregister_class(ConvertWMesh)
     bpy.utils.unregister_class(WEditPanel)
     bpy.utils.unregister_class(WAnimPanel)
-
+    bpy.utils.unregister_class(wData)
 
 
 if __name__ == "__main__":
